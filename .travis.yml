@@ -1,3 +1,4 @@
+dist: xenial
 python:
   - "3.8"
   - "nightly"  # nightly build
