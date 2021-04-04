@@ -2,7 +2,6 @@ check: ## Run linters
 	@echo '*** running checks ***'
 	flake8
 	yamllint -f parsable .
-	cfn-lint -f parseable
 	@echo '*** all checks passing ***'
 
 test: check ## Run tests
