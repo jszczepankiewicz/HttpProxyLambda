@@ -1,0 +1,17 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[packages]
+aws-sam-cli = "*"
+
+[dev-packages]
+cfn-lint = "*"
+flake8 = "*"
+pytest = "*"
+pytest-cov = "*"
+yamllint = "*"
+
+[requires]
+python_version = "3.8"
