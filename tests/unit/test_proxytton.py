@@ -38,7 +38,7 @@ class ProxyTest(TestCase):
         request = urllib.request.Request("https://localhost")
         self.setUpTargetUrl('https://invalid.url/')
 
-        with patch.object(urllib.request.Request, 'add_header', wraps=request.add_header) as mock:
+        with patch.object(urllib.request.Request, 'add_header', wraps=request.add_header):
             response = proxytton.lambda_handler(self.lambdaEvent(), object())
 
             expected_call_list = [

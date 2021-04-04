@@ -1,4 +1,3 @@
-
 import logging
 import time
 import os
@@ -13,7 +12,8 @@ log.setLevel(logging.DEBUG)
 target_url = 'https://dog-facts-api.herokuapp.com/api/v1/resources/dogs?number=1'
 
 # headers(case in-sensitive) not proxied see https://www.freesoft.org/CIE/RFC/2068/143.htm
-HOP_BY_HOP_HEADERS = {'connection', 'keep-alive', 'public', 'proxy-authenticate', 'transfer-encoding', 'upgrade', 'host'}
+HOP_BY_HOP_HEADERS = {'connection', 'keep-alive', 'public', 'proxy-authenticate', 'transfer-encoding', 'upgrade',
+                      'host'}
 
 # remote response single chunk size
 CHUNKSIZE = 4096
@@ -21,7 +21,9 @@ CHUNKSIZE = 4096
 # max allowed response size in bytes
 RESPONSE_MAX_SIZE_BYTES = 100 * 1024
 
+
 class ApiProxy:
+
     def __init__(self, request=None):
         self.request = request
 
@@ -76,7 +78,7 @@ class ApiProxy:
                 buffer += chunk
 
             scanEndTime = time.time()
-            http_message = r.info()
+
             log.info("Retrieved results in (ms): " + str((scanEndTime - startTime) * 1000))
             log.debug("Response headers: " + str(r.headers))
             return self.__response(buffer.decode(self.__response_encoding(r)), r.getcode(), 'application/json')
