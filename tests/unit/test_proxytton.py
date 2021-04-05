@@ -21,7 +21,18 @@ class ProxyTest(TestCase):
         os.environ[ENVIRONMENT_VAR_TARGET_URL] = url
 
     def lambdaEvent(self, user_agent=DEFAULT_USER_AGENT):
-        with open('get-request-event.json', 'r') as file:
+        print("----------- before test===")
+        if os.path.isfile('tests/unit/get-request-event.json'):
+            print("tests/unit/get-request-event.json jest !")
+
+        if os.path.isfile('/tests/unit/get-request-event.json'):
+            print("/tests/unit/get-request-event.json jest !")
+
+        if os.path.isfile('get-request-event.json'):
+            print("get-request-event.json jest !")
+        print("----------- after test===")
+
+        with open('tests/unit/get-request-event.json', 'r') as file:
             dataString = file.read()
 
         data = json.loads(dataString.replace('$user_agent', user_agent))
