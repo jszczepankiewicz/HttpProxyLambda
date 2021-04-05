@@ -19,6 +19,10 @@ class ProxyTest(TestCase):
     def setUpTargetUrl(self, url):
         os.environ[ENVIRONMENT_VAR_TARGET_URL] = url
 
+    def __lower_dict(self, d):
+        new_dict = dict((k.lower(), v) for k, v in d.items())
+        return new_dict
+
     def lambdaEvent(self):
 
         if os.path.isfile('tests/unit/get-request-event.json'):
@@ -66,16 +70,17 @@ class ProxyTest(TestCase):
 
     def test_should_return_response_headers(self):
         response = ApiProxy().process_event(self.lambdaEvent())
+        headers_lower = self.__lower_dict(response['headers'])
 
         self.assertEqual("200", response['statusCode'], 'incorrect response code')
         self.assertLess(0, len(response['body']), 'empty body response')
-        self.assertEqual('application/json; charset=utf-8', response['headers']['Content-Type'], 'Unexpected Content-Type')
-        self.assertEqual('Express', response['headers']['X-Powered-By'], 'Unexpected X-Powered-By')
-        self.assertEqual('*', response['headers']['Access-Control-Allow-Origin'], 'Access-Control-Allow-Origin')
-        self.assertEqual('max-age=14400', response['headers']['Cache-Control'], 'Unexpected Cache-Control')
-        self.assertEqual('bytes', response['headers']['Accept-Ranges'], 'Unexpected Accept-Ranges')
-        self.assertEqual('Accept-Encoding', response['headers']['Vary'], 'Unexpected Vary')
-        self.assertEqual('cloudflare', response['headers']['Server'], 'Unexpected Server')
+        self.assertEqual('application/json; charset=utf-8', headers_lower['content-type'], 'Unexpected Content-Type')
+        self.assertEqual('Express', headers_lower['x-powered-by'], 'Unexpected X-Powered-By')
+        self.assertEqual('*', headers_lower['access-control-allow-origin'], 'Access-Control-Allow-Origin')
+        self.assertEqual('max-age=14400', headers_lower['cache-control'], 'Unexpected Cache-Control')
+        self.assertEqual('bytes', headers_lower['accept-ranges'], 'Unexpected Accept-Ranges')
+        self.assertEqual('Accept-Encoding', headers_lower['vary'], 'Unexpected Vary')
+        self.assertEqual('cloudflare', headers_lower['server'], 'Unexpected Server')
 
         expected_temporal_headers = {'Date', 'Etag', 'CF-Cache-Status', 'Age', 'cf-request-id', 'Expect-CT',
                                      'Report-To', 'NEL', 'CF-RAY', 'alt-svc'}
