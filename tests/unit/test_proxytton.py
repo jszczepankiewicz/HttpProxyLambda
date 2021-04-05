@@ -4,7 +4,7 @@ import os
 import sys
 import unittest
 import urllib
-from proxytton.app import ApiProxy
+
 from unittest import TestCase
 
 from unittest.mock import call, patch
