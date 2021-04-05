@@ -9,6 +9,8 @@ from unittest import TestCase
 
 from unittest.mock import call, patch
 
+from proxytton.app import ApiProxy
+
 ENVIRONMENT_VAR_TARGET_URL = 'PROXY_OVERRIDE_TARGET_URL'
 DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36"
 
