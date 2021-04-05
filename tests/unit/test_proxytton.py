@@ -4,7 +4,7 @@ import os
 import sys
 import unittest
 import urllib
-import app
+from proxytton.app import ApiProxy
 from unittest import TestCase
 
 from unittest.mock import call, patch
@@ -38,7 +38,7 @@ class ProxyTest(TestCase):
 
         with patch.object(urllib.request.Request, 'add_header', wraps=request.add_header):
 
-            response = app.lambda_handler(self.lambdaEvent(), object())
+            response = ApiProxy().process_event(self.lambdaEvent())
 
             expected_call_list = [
                 call('accept',
@@ -50,7 +50,7 @@ class ProxyTest(TestCase):
             self.assertEqual(expected_call_list, request.add_header.call_args_list)
 
     def test_should_read_remote_url(self):
-        response = app.lambda_handler(self.lambdaEvent(), object())
+        response = ApiProxy().process_event(self.lambdaEvent())
 
         self.assertEqual("200", response['statusCode'], 'incorrect response code')
         self.assertEqual('application/json', response['headers']['Content-Type'], 'unexpected Content-Type')
@@ -59,7 +59,7 @@ class ProxyTest(TestCase):
     def test_should_raise_HTTP502_on_invalid_url(self):
         self.setUpTargetUrl('https://invalid.url/')
 
-        response = app.lambda_handler(self.lambdaEvent(), object())
+        response = ApiProxy().process_event(self.lambdaEvent())
 
         self.assertEqual("502", response['statusCode'], 'incorrect response code')
         self.assertEqual(
