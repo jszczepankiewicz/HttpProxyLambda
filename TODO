@@ -1,0 +1,6 @@
+1. (LOW) Example url https://jsonplaceholder.typicode.com/todos/1 has unsupported by default (urllib) encodining Brotli:
+https://stackoverflow.com/questions/49584929/unable-to-decode-python-web-request. Should add either support by external
+library or validate as unsupported otherwise decode fails
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xa1 in position 0: invalid start byte
+
+2. (HIGH) return headers

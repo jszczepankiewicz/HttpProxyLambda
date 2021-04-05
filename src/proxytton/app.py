@@ -9,18 +9,11 @@ from urllib.error import HTTPError
 log = logging.getLogger('proxy')
 log.setLevel(logging.DEBUG)
 
-target_url = 'https://dog-facts-api.herokuapp.com/api/v1/resources/dogs?number=1'
+target_url = 'https://reqres.in/api/users/2'
 
 # headers(case in-sensitive) not proxied see https://www.freesoft.org/CIE/RFC/2068/143.htm
 HOP_BY_HOP_HEADERS = {'connection', 'keep-alive', 'public', 'proxy-authenticate', 'transfer-encoding', 'upgrade',
                       'host'}
-
-# remote response single chunk size
-CHUNKSIZE = 4096
-
-# max allowed response size in bytes
-RESPONSE_MAX_SIZE_BYTES = 100 * 1024
-
 
 class ApiProxy:
 
@@ -68,14 +61,7 @@ class ApiProxy:
 
             r = urllib.request.urlopen(request)
 
-            buffer = b''
-
-            while True:
-                chunk = r.read(CHUNKSIZE)
-                if not chunk:
-                    break
-
-                buffer += chunk
+            buffer = r.read()
 
             scanEndTime = time.time()
 
