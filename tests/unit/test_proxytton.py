@@ -21,23 +21,19 @@ class ProxyTest(TestCase):
         os.environ[ENVIRONMENT_VAR_TARGET_URL] = url
 
     def lambdaEvent(self, user_agent=DEFAULT_USER_AGENT):
-        print("----------- before test===")
+
         if os.path.isfile('tests/unit/get-request-event.json'):
-            print("tests/unit/get-request-event.json jest !")
+            #   as visible in travis ci
+            with open('tests/unit/get-request-event.json', 'r') as file:
+                data_string = file.read()
+        elif os.path.isfile('get-request-event.json'):
+            #   as visible in IDE
+            with open('get-request-event.json', 'r') as file:
+                data_string = file.read()
+        else:
+            raise Exception('Unsupported environment. Path to test json file can not be determined.')
 
-        if os.path.isfile('/tests/unit/get-request-event.json'):
-            print("/tests/unit/get-request-event.json jest !")
-
-        if os.path.isfile('get-request-event.json'):
-            print("get-request-event.json jest !")
-        print("----------- after test===")
-
-        with open('tests/unit/get-request-event.json', 'r') as file:
-            dataString = file.read()
-
-        data = json.loads(dataString.replace('$user_agent', user_agent))
-
-        return data
+        return json.loads(data_string)
 
     def setUp(self):
         """ erase override target url before each test """
@@ -69,15 +65,19 @@ class ProxyTest(TestCase):
         self.assertEqual('application/json', response['headers']['Content-Type'], 'unexpected Content-Type')
         self.assertLess(0, len(response['body']), 'empty body response')
 
-    def test_should_raise_HTTP502_on_invalid_url(self):
+    def test_should_raise_HTTP502_on_unresolved_dns(self):
         self.setUpTargetUrl('https://invalid.url/')
 
         response = ApiProxy().process_event(self.lambdaEvent())
 
         self.assertEqual("502", response['statusCode'], 'incorrect response code')
-        self.assertEqual(
-            "Unexpected URLError while retrieving remote site: <urlopen error [Errno 11001] getaddrinfo failed>",
-            response['body'], 'incorrect response body')
+
+        # on windows Errno 11001 could be observed, on linux Errno -2 for unresolved dns
+        expected_responses = {
+            'Unexpected URLError while retrieving remote site: <urlopen error [Errno 11001] getaddrinfo failed>',
+            'Unexpected URLError while retrieving remote site: <urlopen error [Errno -2] Name or service not known>'}
+
+        self.assertTrue(response['body'] in expected_responses, 'Unexpected response body')
 
 
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
