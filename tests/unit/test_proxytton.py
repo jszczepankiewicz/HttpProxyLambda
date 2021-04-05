@@ -12,7 +12,6 @@ from unittest.mock import call, patch
 from proxytton.app import ApiProxy
 
 ENVIRONMENT_VAR_TARGET_URL = 'PROXY_OVERRIDE_TARGET_URL'
-DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36"
 
 
 class ProxyTest(TestCase):
@@ -20,7 +19,7 @@ class ProxyTest(TestCase):
     def setUpTargetUrl(self, url):
         os.environ[ENVIRONMENT_VAR_TARGET_URL] = url
 
-    def lambdaEvent(self, user_agent=DEFAULT_USER_AGENT):
+    def lambdaEvent(self):
 
         if os.path.isfile('tests/unit/get-request-event.json'):
             #   as visible in travis ci
@@ -62,8 +61,36 @@ class ProxyTest(TestCase):
         response = ApiProxy().process_event(self.lambdaEvent())
 
         self.assertEqual("200", response['statusCode'], 'incorrect response code')
-        self.assertEqual('application/json', response['headers']['Content-Type'], 'unexpected Content-Type')
+        self.assertEqual('application/json; charset=utf-8', response['headers']['Content-Type'], 'Unexpected Content-Type')
         self.assertLess(0, len(response['body']), 'empty body response')
+
+    def test_should_return_response_headers(self):
+        response = ApiProxy().process_event(self.lambdaEvent())
+
+        self.assertEqual("200", response['statusCode'], 'incorrect response code')
+        self.assertLess(0, len(response['body']), 'empty body response')
+        self.assertEqual('application/json; charset=utf-8', response['headers']['Content-Type'], 'Unexpected Content-Type')
+        self.assertEqual('Express', response['headers']['X-Powered-By'], 'Unexpected X-Powered-By')
+        self.assertEqual('*', response['headers']['Access-Control-Allow-Origin'], 'Access-Control-Allow-Origin')
+        self.assertEqual('max-age=14400', response['headers']['Cache-Control'], 'Unexpected Cache-Control')
+        self.assertEqual('bytes', response['headers']['Accept-Ranges'], 'Unexpected Accept-Ranges')
+        self.assertEqual('Accept-Encoding', response['headers']['Vary'], 'Unexpected Vary')
+        self.assertEqual('cloudflare', response['headers']['Server'], 'Unexpected Server')
+
+        expected_temporal_headers = {'Date', 'Etag', 'CF-Cache-Status', 'Age', 'cf-request-id', 'Expect-CT',
+                                     'Report-To', 'NEL', 'CF-RAY', 'alt-svc'}
+
+        for i in expected_temporal_headers:
+            self.assertTrue((i in response['headers']), 'Missing expected temporal header: ' + i)
+
+        #   should be lower case, hop-by-hop headers
+        #   TODO: add better case-insensitive checks
+        unexpected_headers = {'Connection', 'Keep-Alive', 'Public', 'Proxy-Authenticate', 'Transfer-Encoding',
+                              'Upgrade', 'Host'}
+
+        for i in unexpected_headers:
+            self.assertFalse((i in response['headers']), 'Unexpected presence of hop-by-hop header: ' + i)
+
 
     def test_should_raise_HTTP502_on_unresolved_dns(self):
         self.setUpTargetUrl('https://invalid.url/')

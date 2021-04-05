@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 import os
@@ -15,6 +16,7 @@ target_url = 'https://reqres.in/api/users/2'
 HOP_BY_HOP_HEADERS = {'connection', 'keep-alive', 'public', 'proxy-authenticate', 'transfer-encoding', 'upgrade',
                       'host'}
 
+
 class ApiProxy:
 
     def __init__(self, request=None):
@@ -23,15 +25,32 @@ class ApiProxy:
     def __request(self):
         return self.request or urllib.request.Request("https://localhost")
 
-    def __response(self, message, status_code, content_type='text/plain'):
-        return {
+    def __strip_hop_headers(self, all_headers):
+
+        if all_headers is None:
+            log.debug('Empty response headers')
+            return dict()
+
+        end_headers = dict()
+
+        for key in dict(all_headers.items()).keys():
+            if key.lower() in HOP_BY_HOP_HEADERS:
+                log.debug('Striping response header: ' + key)
+            else:
+                log.debug('Adding response header: ' + key)
+                end_headers[key] = all_headers[key]
+
+        return end_headers
+
+    def __response(self, message, status_code, headers=None):
+
+        response = {
             'statusCode': str(status_code),
             'body': message,
-            'headers': {
-                'Content-Type': str(content_type),
-                'Access-Control-Allow-Origin': '*'
-            },
+            'headers': self.__strip_hop_headers(headers),
         }
+
+        return response
 
     def __proxied_url(self):
         target = os.getenv('PROXY_OVERRIDE_TARGET_URL') or target_url
@@ -53,7 +72,7 @@ class ApiProxy:
     def process_event(self, event):
         try:
             log.debug("Before remote site retrieval")
-            startTime = time.time()
+            request_start = time.time()
 
             request = self.__request()
             request.full_url = self.__proxied_url()
@@ -63,11 +82,11 @@ class ApiProxy:
 
             buffer = r.read()
 
-            scanEndTime = time.time()
+            request_end = time.time()
 
-            log.info("Retrieved results in (ms): " + str((scanEndTime - startTime) * 1000))
+            log.info("Retrieved results in (ms): " + str((request_end - request_start) * 1000))
             log.debug("Response headers: " + str(r.headers))
-            return self.__response(buffer.decode(self.__response_encoding(r)), r.getcode(), 'application/json')
+            return self.__response(buffer.decode(self.__response_encoding(r)), r.getcode(), r.headers)
         except urllib.error.URLError as exception:
             log.error("Unexpected URLError while retrieving remote site: " + str(exception))
             return self.__response("Unexpected URLError while retrieving remote site: " + str(exception), "502")
