@@ -11,16 +11,19 @@ from unittest.mock import call, patch
 
 from proxytton.app import ApiProxy
 
-ENVIRONMENT_VAR_TARGET_URL = 'PROXY_OVERRIDE_TARGET_URL'
+ENVIRONMENT_VAR_TARGET_HOST = 'PROXY_TARGET_HOST'
 
 class ProxyTest(TestCase):
 
-    def setUpTargetUrl(self, url):
-        os.environ[ENVIRONMENT_VAR_TARGET_URL] = url
+    def __setup_target_host(self, host='reqres.in'):
+        os.environ[ENVIRONMENT_VAR_TARGET_HOST] = host
 
     def __lower_dict(self, d):
         new_dict = dict((k.lower(), v) for k, v in d.items())
         return new_dict
+
+    def __post_request_1_event(self):
+        return self.__lambda_event('post-request-1.json')
 
     def __get_request_empty_header1_event(self):
         return self.__lambda_event('get-request-empty-headers-1.json')
@@ -48,8 +51,21 @@ class ProxyTest(TestCase):
 
     def setUp(self):
         """ erase override target url before each test """
-        if ENVIRONMENT_VAR_TARGET_URL in os.environ:
-            del os.environ[ENVIRONMENT_VAR_TARGET_URL]
+        if ENVIRONMENT_VAR_TARGET_HOST in os.environ:
+            del os.environ[ENVIRONMENT_VAR_TARGET_HOST]
+
+        self.__setup_target_host('reqres.in')
+
+    def test_should_support_post_request(self):
+
+        #   when
+        response1 = ApiProxy().process_event(self.__post_request_1_event())
+
+        #   then
+        self.assertEqual("200", response1['statusCode'], 'incorrect response code')
+        self.assertEqual('application/json; charset=utf-8', response1['headers']['Content-Type'], 'Unexpected Content-Type')
+        self.assertEqual('{"id":4,"token":"QpwL5tke4Pnpja7X4"}', response1['body'], 'unexpected body response')
+
 
     def test_should_support_empty_request_headers(self):
 
@@ -70,7 +86,7 @@ class ProxyTest(TestCase):
     #   https://www.freesoft.org/CIE/RFC/2068/143.htm
     def test_should_proxy_end_to_end_headers(self):
         request = urllib.request.Request("https://localhost")
-        self.setUpTargetUrl('https://invalid.url/')
+        self.__setup_target_host('invalid.url')
 
         with patch.object(urllib.request.Request, 'add_header', wraps=request.add_header):
 
@@ -129,7 +145,7 @@ class ProxyTest(TestCase):
 
 
     def test_should_raise_HTTP502_on_unresolved_dns(self):
-        self.setUpTargetUrl('https://invalid.url/')
+        self.__setup_target_host('https://invalid.url/')
 
         response = ApiProxy().process_event(self.__get_request_event())
 

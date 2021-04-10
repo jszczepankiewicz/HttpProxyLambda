@@ -1,15 +1,16 @@
 {
   "resource": "/",
-  "path": "/",
+  "path": "/api/register",
   "httpMethod": "POST",
   "requestContext": {
     "resourcePath": "/",
     "httpMethod": "POST",
-    "path": "/Prod/"
+    "path": "/api/register"
 
   },
   "headers": {
     "accept": "application/json",
+    "Content-Type":"application/json",
     "Host": "70ixmpl4fl.execute-api.us-east-2.amazonaws.com",
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36",
     "X-Amzn-Trace-Id": "Root=1-5e66d96f-7491f09xmpl79d18acf3d050"
@@ -28,6 +29,6 @@
   "multiValueQueryStringParameters": null,
   "pathParameters": null,
   "stageVariables": null,
-  "body": null,
-  "isBase64Encoded": false
+  "body": "ewogICAgImVtYWlsIjogImV2ZS5ob2x0QHJlcXJlcy5pbiIsCiAgICAicGFzc3dvcmQiOiAicGlzdG9sIgp9",
+  "isBase64Encoded": true
 }

@@ -1,11 +1,11 @@
 {
   "resource": "/",
-  "path": "/",
+  "path": "/api/users/2",
   "httpMethod": "GET",
   "requestContext": {
     "resourcePath": "/",
     "httpMethod": "GET",
-    "path": "/Prod/"
+    "path": "/api/users/2"
 
   },
   "headers": {
