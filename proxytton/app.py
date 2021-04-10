@@ -61,7 +61,23 @@ class ApiProxy:
         # should probably be changed to ASCII?
         return response.info().get_content_charset() or 'utf-8'
 
+    def __add_default_headers(self, request):
+        request.add_header('User-agent', 'lambda-proxy')
+        request.add_header('Accept', '*/*')
+        return
+
     def __proxy_headers(self, request, event):
+
+        if 'headers' not in event.keys():
+            log.warning('Request without headers, adding default accept all header')
+            self.__add_default_headers(request)
+            return
+
+        if len(event['headers']) == 0:
+            log.warning('Request with empty headers, adding default accept all header')
+            self.__add_default_headers(request)
+            return
+
         for i in event['headers']:
             if i.lower() in HOP_BY_HOP_HEADERS:
                 continue

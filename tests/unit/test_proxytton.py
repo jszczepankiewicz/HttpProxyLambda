@@ -13,7 +13,6 @@ from proxytton.app import ApiProxy
 
 ENVIRONMENT_VAR_TARGET_URL = 'PROXY_OVERRIDE_TARGET_URL'
 
-
 class ProxyTest(TestCase):
 
     def setUpTargetUrl(self, url):
@@ -23,15 +22,24 @@ class ProxyTest(TestCase):
         new_dict = dict((k.lower(), v) for k, v in d.items())
         return new_dict
 
-    def lambdaEvent(self):
+    def __get_request_empty_header1_event(self):
+        return self.__lambda_event('get-request-empty-headers-1.json')
 
-        if os.path.isfile('tests/unit/get-request-event.json'):
+    def __get_request_empty_header2_event(self):
+        return self.__lambda_event('get-request-empty-headers-2.json')
+
+    def __get_request_event(self):
+        return self.__lambda_event('get-request-event.json')
+
+    def __lambda_event(self, path):
+
+        if os.path.isfile('tests/unit/' + path):
             #   as visible in travis ci
-            with open('tests/unit/get-request-event.json', 'r') as file:
+            with open('tests/unit/' + path, 'r') as file:
                 data_string = file.read()
-        elif os.path.isfile('get-request-event.json'):
+        elif os.path.isfile(path):
             #   as visible in IDE
-            with open('get-request-event.json', 'r') as file:
+            with open(path, 'r') as file:
                 data_string = file.read()
         else:
             raise Exception('Unsupported environment. Path to test json file can not be determined.')
@@ -43,6 +51,22 @@ class ProxyTest(TestCase):
         if ENVIRONMENT_VAR_TARGET_URL in os.environ:
             del os.environ[ENVIRONMENT_VAR_TARGET_URL]
 
+    def test_should_support_empty_request_headers(self):
+
+        #   when
+        response1 = ApiProxy().process_event(self.__get_request_empty_header1_event())
+        response2 = ApiProxy().process_event(self.__get_request_empty_header2_event())
+
+        #   then
+        self.assertEqual("200", response1['statusCode'], 'incorrect response code')
+        self.assertEqual('application/json; charset=utf-8', response1['headers']['Content-Type'], 'Unexpected Content-Type')
+        self.assertLess(0, len(response1['body']), 'empty body response')
+
+        self.assertEqual("200", response2['statusCode'], 'incorrect response code')
+        self.assertEqual('application/json; charset=utf-8', response2['headers']['Content-Type'], 'Unexpected Content-Type')
+        self.assertLess(0, len(response2['body']), 'empty body response')
+
+
     #   https://www.freesoft.org/CIE/RFC/2068/143.htm
     def test_should_proxy_end_to_end_headers(self):
         request = urllib.request.Request("https://localhost")
@@ -50,7 +74,7 @@ class ProxyTest(TestCase):
 
         with patch.object(urllib.request.Request, 'add_header', wraps=request.add_header):
 
-            response = ApiProxy().process_event(self.lambdaEvent())
+            response = ApiProxy().process_event(self.__get_request_event())
 
             expected_call_list = [
                 call('accept',
@@ -62,14 +86,21 @@ class ProxyTest(TestCase):
             self.assertEqual(expected_call_list, request.add_header.call_args_list)
 
     def test_should_read_remote_url(self):
-        response = ApiProxy().process_event(self.lambdaEvent())
+        response = ApiProxy().process_event(self.__get_request_event())
+
+        self.assertEqual("200", response['statusCode'], 'incorrect response code')
+        self.assertEqual('application/json; charset=utf-8', response['headers']['Content-Type'], 'Unexpected Content-Type')
+        self.assertLess(0, len(response['body']), 'empty body response')
+
+    def test_should_read_remote_url_without_request_headers(self):
+        response = ApiProxy().process_event(self.__get_request_event())
 
         self.assertEqual("200", response['statusCode'], 'incorrect response code')
         self.assertEqual('application/json; charset=utf-8', response['headers']['Content-Type'], 'Unexpected Content-Type')
         self.assertLess(0, len(response['body']), 'empty body response')
 
     def test_should_return_response_headers(self):
-        response = ApiProxy().process_event(self.lambdaEvent())
+        response = ApiProxy().process_event(self.__get_request_event())
         headers_lower = self.__lower_dict(response['headers'])
 
         self.assertEqual("200", response['statusCode'], 'incorrect response code')
@@ -100,7 +131,7 @@ class ProxyTest(TestCase):
     def test_should_raise_HTTP502_on_unresolved_dns(self):
         self.setUpTargetUrl('https://invalid.url/')
 
-        response = ApiProxy().process_event(self.lambdaEvent())
+        response = ApiProxy().process_event(self.__get_request_event())
 
         self.assertEqual("502", response['statusCode'], 'incorrect response code')
 

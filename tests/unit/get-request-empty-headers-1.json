@@ -1,0 +1,28 @@
+{
+  "resource": "/",
+  "path": "/",
+  "httpMethod": "GET",
+  "requestContext": {
+    "resourcePath": "/",
+    "httpMethod": "GET",
+    "path": "/Prod/"
+
+  },
+  "headers": {
+  },
+  "multiValueHeaders": {
+    "accept": [
+      "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
+    ],
+    "accept-encoding": [
+      "gzip, deflate, br"
+    ]
+
+  },
+  "queryStringParameters": null,
+  "multiValueQueryStringParameters": null,
+  "pathParameters": null,
+  "stageVariables": null,
+  "body": null,
+  "isBase64Encoded": false
+}
