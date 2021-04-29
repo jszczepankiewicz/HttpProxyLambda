@@ -23,7 +23,7 @@ ENV_PLAINTEXT_PASS = 'PROXY_BASIC_PLAIN_PASS'
 
 SUPPORTED_METHODS = {'GET', 'POST'}
 
-sm_client = boto3.client('secretsmanager')
+sm_client = boto3.client('secretsmanager', os.getenv('AWS_REGION'))
 
 class ApiProxy:
 
