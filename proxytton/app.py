@@ -3,6 +3,7 @@ import json
 import logging
 import time
 import os
+import boto3
 
 import urllib.request
 import urllib.parse
@@ -17,13 +18,39 @@ HOP_BY_HOP_HEADERS = {'connection', 'keep-alive', 'public', 'proxy-authenticate'
 
 OS_PROXY_TARGET_HOST_ENV_NAME = 'PROXY_TARGET_HOST'
 
+ENV_PLAINTEXT_USER = 'PROXY_BASIC_PLAIN_USER'
+ENV_PLAINTEXT_PASS = 'PROXY_BASIC_PLAIN_PASS'
+
 SUPPORTED_METHODS = {'GET', 'POST'}
 
+sm_client = boto3.client('secretsmanager')
 
 class ApiProxy:
 
     def __init__(self, request=None):
         self.request = request
+
+    def __add_basic_auth(self, username, password, request):
+        b64auth = base64.b64encode(("%s:%s" % (username, password)).encode("ascii"))
+        request.add_header("Authorization", "Basic %s" % b64auth.decode("ascii"))
+        return
+
+    def __authorize_downstream(self, request):
+
+        username = None
+        password = None
+
+        #   check if credentials provided through plaintext
+        if ENV_PLAINTEXT_USER in os.environ:
+            log.info("Detected simple credentials injection")
+            username = os.getenv(ENV_PLAINTEXT_USER)
+            password = os.getenv(ENV_PLAINTEXT_PASS)
+
+        if username is not None:
+            log.info("Authorization: Basic will be used")
+            self.__add_basic_auth(username, password, request)
+
+        return
 
     def __http_method(self):
         return self.http_method
@@ -118,8 +145,8 @@ class ApiProxy:
         if event['httpMethod'] == 'POST':
 
             message_bytes = base64.b64decode(event['body'])
-            #   TODO: hardcode utf8?
-            message = message_bytes.decode('ascii')
+            #   TODO: add content type detection
+            message = message_bytes.decode('utf-8')
             log.debug('Proxying POST body: ' + message)
             request.data = message_bytes
             return
@@ -131,8 +158,9 @@ class ApiProxy:
             request_start = time.time()
 
             request = self.__request(self.__request_path(event), self.__request_method(event))
-            #request.full_url = self.__proxied_url()
+
             self.__handle_request_body(request, event)
+            self.__authorize_downstream(request)
             self.__proxy_headers(request, event)
 
             r = urllib.request.urlopen(request)

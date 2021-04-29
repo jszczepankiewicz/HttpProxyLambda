@@ -5,13 +5,20 @@ import sys
 import unittest
 import urllib
 
-from unittest import TestCase
+
+from unittest import TestCase, mock
 
 from unittest.mock import call, patch
 
 from proxytton.app import ApiProxy
 
 ENVIRONMENT_VAR_TARGET_HOST = 'PROXY_TARGET_HOST'
+# fixme: use app.py referencing to avoid duplication
+ENV_PLAINTEXT_USER = 'PROXY_BASIC_PLAIN_USER'
+ENV_PLAINTEXT_PASS = 'PROXY_BASIC_PLAIN_PASS'
+TEST_BASIC_USER = 'SomeUser'
+TEST_BASIC_PASS = 'PlainPass'
+TEST_BASIC_ENCODED = 'Basic U29tZVVzZXI6UGxhaW5QYXNz'
 
 class ProxyTest(TestCase):
 
@@ -34,6 +41,12 @@ class ProxyTest(TestCase):
     def __get_request_event(self):
         return self.__lambda_event('get-request-event.json')
 
+    def __given_plaintext_password_configured(self):
+        os.environ[ENV_PLAINTEXT_USER] = TEST_BASIC_USER
+        os.environ[ENV_PLAINTEXT_PASS] = TEST_BASIC_PASS
+        return
+
+
     def __lambda_event(self, path):
 
         if os.path.isfile('tests/unit/' + path):
@@ -50,11 +63,37 @@ class ProxyTest(TestCase):
         return json.loads(data_string)
 
     def setUp(self):
-        """ erase override target url before each test """
+
         if ENVIRONMENT_VAR_TARGET_HOST in os.environ:
             del os.environ[ENVIRONMENT_VAR_TARGET_HOST]
+        if ENV_PLAINTEXT_USER in os.environ:
+            del os.environ[ENV_PLAINTEXT_USER]
+        if ENV_PLAINTEXT_PASS in os.environ:
+            del os.environ[ENV_PLAINTEXT_PASS]
 
         self.__setup_target_host('reqres.in')
+
+    def test_should_support_basic_auth_plaintext_downstream(self):
+
+        self.__given_plaintext_password_configured()
+
+        request = urllib.request.Request("https://localhost")
+
+        with patch.object(urllib.request.Request, 'add_header', wraps=request.add_header):
+
+            response = ApiProxy().process_event(self.__post_request_1_event())
+
+            expected_call_list = [
+                call('Authorization',
+                     'Basic U29tZVVzZXI6UGxhaW5QYXNz'),
+                call('accept',
+                     'application/json'),
+                call('Content-Type', 'application/json'),
+                call("User-Agent",
+                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36"),
+                call("X-Amzn-Trace-Id", "Root=1-5e66d96f-7491f09xmpl79d18acf3d050")]
+
+            self.assertEqual(expected_call_list, request.add_header.call_args_list)
 
     def test_should_support_post_request(self):
 
