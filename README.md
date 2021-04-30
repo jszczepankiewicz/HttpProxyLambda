@@ -5,6 +5,16 @@
 Tested on Python 3.8
 
 ## HOWTOS
+### HOWTO configure proxy target host and path mapping
+Following env variable contains mapping:
+PROXY_MAPPINGS
+content should be json formatted. Example mapping configuration:
+`
+{"/abc": "https://superduper.com##path##", "/xyz/fxc": "https://anno.xyz:8080/pipipi##path##"}
+`
+which means:
+if /abc will be invoked than target url will be https://superduper.com/abc
+
 ### HOWTO add basic authentication downstream using ENV Variables injection
 Function supports providing BASIC HTTP auth credentials using injection through env variables. To inject that please make sure 
 following env variables are set:

@@ -23,6 +23,30 @@ ENV_PLAINTEXT_PASS = 'PROXY_BASIC_PLAIN_PASS'
 
 SUPPORTED_METHODS = {'GET', 'POST'}
 
+class PathInjector:
+    def __init__(self):
+        mapping_json = os.getenv('PROXY_MAPPINGS')
+        if mapping_json is None:
+            log.error("No mappings found. Make sure you added at least one as json in env variable PROXY_MAPPINGS")
+            raise Exception("No mappings found. Make sure you added at least one as json in env variable PROXY_MAPPINGS")
+            return
+
+        self.__mappings = json.loads(mapping_json)
+
+    def mappings(self):
+        return self.__mappings
+
+class PathTransformer:
+
+    def __init__(self, path_mappings):
+        self.__path_mappings = path_mappings
+
+    def target_url(self, path):
+        if path not in self.__path_mappings:
+            log.debug("Unmatched path: " + path)
+            return None
+        mapping = self.__path_mappings[path]
+        return mapping.replace('##path##', path)
 
 class ApiProxy:
 
@@ -55,14 +79,22 @@ class ApiProxy:
         return self.http_method
 
     def __proxied_url(self, path=''):
+        paths = PathInjector()
+        mappings = PathTransformer(paths.mappings())
+        mapping = mappings.target_url(path)
 
-        if OS_PROXY_TARGET_HOST_ENV_NAME in os.environ:
-            target_host = os.getenv(OS_PROXY_TARGET_HOST_ENV_NAME)
-            target_url = 'https://' + target_host + path
-            log.debug('Setting target url: ' + target_url)
-            return target_url
-        else:
-            raise Exception(OS_PROXY_TARGET_HOST_ENV_NAME + ' not set in environment variables')
+        if mapping is None:
+            raise Exception("Unsupported path: " + path)
+
+        return mapping
+
+        #if OS_PROXY_TARGET_HOST_ENV_NAME in os.environ:
+        #    target_host = os.getenv(OS_PROXY_TARGET_HOST_ENV_NAME)
+        #    target_url = 'https://' + target_host + path
+        #    log.debug('Setting target url: ' + target_url)
+        #    return target_url
+        #else:
+        #    raise Exception(OS_PROXY_TARGET_HOST_ENV_NAME + ' not set in environment variables')
 
     def __request(self, path, method):
         return self.request or urllib.request.Request(self.__proxied_url(path), method=method)

@@ -10,12 +10,13 @@ from unittest import TestCase, mock
 
 from unittest.mock import call, patch
 
-from proxytton.app import ApiProxy
+from proxytton.app import ApiProxy, PathTransformer, PathInjector
 
 ENVIRONMENT_VAR_TARGET_HOST = 'PROXY_TARGET_HOST'
 # fixme: use app.py referencing to avoid duplication
 ENV_PLAINTEXT_USER = 'PROXY_BASIC_PLAIN_USER'
 ENV_PLAINTEXT_PASS = 'PROXY_BASIC_PLAIN_PASS'
+ENV_MAPPINGS = 'PROXY_MAPPINGS'
 TEST_BASIC_USER = 'SomeUser'
 TEST_BASIC_PASS = 'PlainPass'
 TEST_BASIC_ENCODED = 'Basic U29tZVVzZXI6UGxhaW5QYXNz'
@@ -70,8 +71,11 @@ class ProxyTest(TestCase):
             del os.environ[ENV_PLAINTEXT_USER]
         if ENV_PLAINTEXT_PASS in os.environ:
             del os.environ[ENV_PLAINTEXT_PASS]
+        if ENV_MAPPINGS in os.environ:
+            del os.environ[ENV_MAPPINGS]
 
-        self.__setup_target_host('reqres.in')
+        os.environ[ENV_MAPPINGS] = '{"/api/users/2": "https://reqres.in##path##", "/api/register": "https://reqres.in##path##"}'
+        #self.__setup_target_host('reqres.in')
 
     def test_should_support_basic_auth_plaintext_downstream(self):
 
@@ -99,7 +103,7 @@ class ProxyTest(TestCase):
 
         #   when
         response1 = ApiProxy().process_event(self.__post_request_1_event())
-
+        print(response1['body'])
         #   then
         self.assertEqual("200", response1['statusCode'], 'incorrect response code')
         self.assertEqual('application/json; charset=utf-8', response1['headers']['Content-Type'], 'Unexpected Content-Type')
@@ -184,7 +188,7 @@ class ProxyTest(TestCase):
 
 
     def test_should_raise_HTTP502_on_unresolved_dns(self):
-        self.__setup_target_host('https://invalid.url/')
+        os.environ[ENV_MAPPINGS] = '{"/api/users/2": "https://invalid.url##path##", "/api/register": "https://invalid.url##path##"}'
 
         response = ApiProxy().process_event(self.__get_request_event())
 
@@ -196,6 +200,29 @@ class ProxyTest(TestCase):
             'Unexpected URLError while retrieving remote site: <urlopen error [Errno -2] Name or service not known>'}
 
         self.assertTrue(response['body'] in expected_responses, 'Unexpected response body')
+
+    def test_should_support_path_transform_existing_mapping(self):
+
+        path_mapping = {"/abc": "https://superduper.com##path##",
+                        "/xyz/fxc": "https://anno.xyz:8080/pipipi##path##"}
+        proxy = PathTransformer(path_mapping)
+
+        target_url = proxy.target_url("/xyz/fxc")
+        self.assertEqual("https://anno.xyz:8080/pipipi/xyz/fxc", target_url, "Unexpected target_url")
+
+    def test_should_return_none_path_transform_non_existing_mapping(self):
+        path_mapping = {"/abc": "https://superduper.com##path##",
+                        "/xyz/fxc": "https://anno.xyz:8080/pipipi##path##"}
+        proxy = PathTransformer(path_mapping)
+
+        target_url = proxy.target_url("/abc/nonexisting")
+        self.assertIsNone(target_url)
+
+
+    def test_should_load_path_injections_from_os_variables(self):
+        os.environ[ENV_MAPPINGS] = '{"/abc": "https://superduper.com##path##", "/xyz/fxc": "https://anno.xyz:8080/pipipi##path##"}'
+        mappings = PathInjector().mappings()
+        self.assertEqual({"/abc": "https://superduper.com##path##", "/xyz/fxc": "https://anno.xyz:8080/pipipi##path##"}, mappings)
 
 
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
