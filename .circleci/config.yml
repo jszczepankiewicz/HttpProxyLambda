@@ -39,7 +39,7 @@ jobs:
       - run:
           name: Run tests
           # This assumes pytest is installed via the install-package step above
-          command: pytest --junitxml=test-results/junit.xml
+          command: pytest --junitxml=test-results/tests/junit.xml
       - run: coverage report && coverage xml -o test-results/coverage.xml
       - store_test_results:
           path: test-results
