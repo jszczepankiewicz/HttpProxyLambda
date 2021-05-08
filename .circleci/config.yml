@@ -40,6 +40,8 @@ jobs:
           # This assumes pytest is installed via the install-package step above
           command: |
             pipenv run python manage.py test
+      - run: mkdir test-reports
+      - run: coverage report && coverage xml -o test-reports/coverage.xml
       - store_test_results:
           path: test-results
       - store_artifacts:
