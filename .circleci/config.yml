@@ -39,8 +39,8 @@ jobs:
           name: Run tests
           # This assumes pytest is installed via the install-package step above
           command: pytest
-      - run: mkdir test-reports
-      - run: coverage report && coverage xml -o test-reports/coverage.xml
+      - run: mkdir test-results
+      - run: coverage report && coverage xml -o test-results/coverage.xml
       - store_test_results:
           path: test-results
       - store_artifacts:
