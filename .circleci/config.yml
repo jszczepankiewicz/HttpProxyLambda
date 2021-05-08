@@ -38,8 +38,7 @@ jobs:
       - run:
           name: Run tests
           # This assumes pytest is installed via the install-package step above
-          command: |
-            pipenv run python manage.py test
+          command: pytest
       - run: mkdir test-reports
       - run: coverage report && coverage xml -o test-reports/coverage.xml
       - store_test_results:
