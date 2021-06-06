@@ -21,7 +21,12 @@ OS_PROXY_TARGET_HOST_ENV_NAME = 'PROXY_TARGET_HOST'
 ENV_PLAINTEXT_USER = 'PROXY_BASIC_PLAIN_USER'
 ENV_PLAINTEXT_PASS = 'PROXY_BASIC_PLAIN_PASS'
 
+ENV_SECRETS_USER = 'PROXY_SECRETS_MANAGER_USER'
+ENV_SECRETS_PASS_ARN = 'PROXY_SECRETS_MANAGER_PASS_ARN'
+
 SUPPORTED_METHODS = {'GET', 'POST'}
+
+secretsmanager_client = None
 
 class PathInjector:
     def __init__(self):
@@ -58,19 +63,37 @@ class ApiProxy:
         request.add_header("Authorization", "Basic %s" % b64auth.decode("ascii"))
         return
 
+    def __retrieve_password_from_secrets_manager(self, arn):
+
+        global secretsmanager_client
+
+        runtime_region = os.environ['AWS_REGION']
+
+        if not secretsmanager_client:
+            secretsmanager_client = boto3.client("secretsmanager", region_name=runtime_region)
+
+        result = secretsmanager_client.get_secret_value(SecretId=arn)
+        return result['SecretString']
+
     def __authorize_downstream(self, request):
 
         username = None
         password = None
 
-        #   check if credentials provided through plaintext
-        if ENV_PLAINTEXT_USER in os.environ:
-            log.info("Detected simple credentials injection")
+        #   check if credentials provided
+        if ENV_SECRETS_USER in os.environ:
+            username = os.getenv(ENV_SECRETS_USER)
+            arn = os.getenv(ENV_SECRETS_PASS_ARN)
+            log.debug('Will use downstream credentials from secrets manager using arn: %s', arn)
+            password = self.__retrieve_password_from_secrets_manager(arn)
+
+        elif ENV_PLAINTEXT_USER in os.environ:
+            log.debug("Detected simple credentials injection")
             username = os.getenv(ENV_PLAINTEXT_USER)
             password = os.getenv(ENV_PLAINTEXT_PASS)
 
         if username is not None:
-            log.info("Authorization: Basic will be used")
+            log.debug("Authorization: Basic will be used")
             self.__add_basic_auth(username, password, request)
 
         return

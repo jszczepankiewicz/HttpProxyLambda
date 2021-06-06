@@ -5,8 +5,9 @@ import sys
 import unittest
 import urllib
 
-
+from moto import mock_secretsmanager
 from unittest import TestCase, mock
+import boto3
 
 from unittest.mock import call, patch
 
@@ -16,12 +17,35 @@ ENVIRONMENT_VAR_TARGET_HOST = 'PROXY_TARGET_HOST'
 # fixme: use app.py referencing to avoid duplication
 ENV_PLAINTEXT_USER = 'PROXY_BASIC_PLAIN_USER'
 ENV_PLAINTEXT_PASS = 'PROXY_BASIC_PLAIN_PASS'
+
+ENV_SECRETS_USER = 'PROXY_SECRETS_MANAGER_USER'
+ENV_SECRETS_PASS_ARN = 'PROXY_SECRETS_MANAGER_PASS_ARN'
+TEST_SECRETS_FRIENDLY_NAME = 'MyBasicSecret'
+ENV_SECRETS_PASS_ARN_VALUE = 'arn:aws:secretsmanager:us-west-2:123456789012:secret:MyBasicSecret-a1b2c3'
+
 ENV_MAPPINGS = 'PROXY_MAPPINGS'
 TEST_BASIC_USER = 'SomeUser'
 TEST_BASIC_PASS = 'PlainPass'
 TEST_BASIC_ENCODED = 'Basic U29tZVVzZXI6UGxhaW5QYXNz'
 
+TEST_BASIC_USER_SM = 'SomeUserSM'
+TEST_BASIC_PASS_SM = 'PlainPassSM'
+TEST_BASIC_ENCODED_SM = 'Basic U29tZVVzZXJTTTpQbGFpblBhc3NTTQ=='
+
+TEST_AWS_REGION = 'eu-central-1'
+
 class ProxyTest(TestCase):
+
+    def __given_secrets_manager_configured(self):
+        conn = boto3.client("secretsmanager", region_name=TEST_AWS_REGION)
+
+        create_secret = conn.create_secret(
+            Name=TEST_SECRETS_FRIENDLY_NAME, SecretString=TEST_BASIC_PASS_SM
+        )
+
+        os.environ[ENV_SECRETS_USER] = TEST_BASIC_USER_SM
+        os.environ[ENV_SECRETS_PASS_ARN] = ENV_SECRETS_PASS_ARN_VALUE
+
 
     def __setup_target_host(self, host='reqres.in'):
         os.environ[ENVIRONMENT_VAR_TARGET_HOST] = host
@@ -47,7 +71,6 @@ class ProxyTest(TestCase):
         os.environ[ENV_PLAINTEXT_PASS] = TEST_BASIC_PASS
         return
 
-
     def __lambda_event(self, path):
 
         if os.path.isfile('tests/unit/' + path):
@@ -65,17 +88,47 @@ class ProxyTest(TestCase):
 
     def setUp(self):
 
+        os.environ['AWS_REGION'] = TEST_AWS_REGION
+
         if ENVIRONMENT_VAR_TARGET_HOST in os.environ:
             del os.environ[ENVIRONMENT_VAR_TARGET_HOST]
         if ENV_PLAINTEXT_USER in os.environ:
             del os.environ[ENV_PLAINTEXT_USER]
         if ENV_PLAINTEXT_PASS in os.environ:
             del os.environ[ENV_PLAINTEXT_PASS]
+        if ENV_SECRETS_USER in os.environ:
+            del os.environ[ENV_SECRETS_USER]
+        if ENV_SECRETS_PASS_ARN in os.environ:
+            del os.environ[ENV_SECRETS_PASS_ARN]
         if ENV_MAPPINGS in os.environ:
             del os.environ[ENV_MAPPINGS]
 
         os.environ[ENV_MAPPINGS] = '{"/api/users/2": "https://reqres.in##path##", "/api/register": "https://reqres.in##path##"}'
         #self.__setup_target_host('reqres.in')
+
+    @mock_secretsmanager
+    def test_should_support_basic_auth_from_secrets_manager_to_downstream(self):
+
+        self.__given_secrets_manager_configured()
+
+        request = urllib.request.Request("https://localhost")
+
+        with patch.object(urllib.request.Request, 'add_header', wraps=request.add_header):
+
+            response = ApiProxy().process_event(self.__post_request_1_event())
+
+            expected_call_list = [
+                call('Authorization',
+                     TEST_BASIC_ENCODED_SM),
+                call('accept',
+                     'application/json'),
+                call('Content-Type', 'application/json'),
+                call("User-Agent",
+                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36"),
+                call("X-Amzn-Trace-Id", "Root=1-5e66d96f-7491f09xmpl79d18acf3d050")]
+
+            self.assertEqual(expected_call_list, request.add_header.call_args_list)
+
 
     def test_should_support_basic_auth_plaintext_downstream(self):
 
@@ -89,7 +142,7 @@ class ProxyTest(TestCase):
 
             expected_call_list = [
                 call('Authorization',
-                     'Basic U29tZVVzZXI6UGxhaW5QYXNz'),
+                     TEST_BASIC_ENCODED),
                 call('accept',
                      'application/json'),
                 call('Content-Type', 'application/json'),
