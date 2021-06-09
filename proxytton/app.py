@@ -197,11 +197,16 @@ class ApiProxy:
     def __handle_request_body(self, request, event):
         #   TODO: add isbase64 conditional check
         if event['httpMethod'] == 'POST':
+            if event['isBase64Encoded']:
+                message_bytes = base64.b64decode(event['body'])
+                #   TODO: add content type detection
+                message = message_bytes.decode('utf-8')
+                log.debug('Decoded base64 body: ' + message)
+            else:
+                message = event['body']
+                message_bytes = bytes(message, 'utf-8')
+                log.debug('Plaintext body: ' + message)
 
-            message_bytes = base64.b64decode(event['body'])
-            #   TODO: add content type detection
-            message = message_bytes.decode('utf-8')
-            log.debug('Proxying POST body: ' + message)
             request.data = message_bytes
             return
 

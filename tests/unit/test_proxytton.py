@@ -57,6 +57,9 @@ class ProxyTest(TestCase):
     def __post_request_1_event(self):
         return self.__lambda_event('post-request-1.json')
 
+    def __post_request_plain_body_event(self):
+        return self.__lambda_event('post-request-plain-body.json')
+
     def __get_request_empty_header1_event(self):
         return self.__lambda_event('get-request-empty-headers-1.json')
 
@@ -156,6 +159,16 @@ class ProxyTest(TestCase):
 
         #   when
         response1 = ApiProxy().process_event(self.__post_request_1_event())
+        print(response1['body'])
+        #   then
+        self.assertEqual("200", response1['statusCode'], 'incorrect response code')
+        self.assertEqual('application/json; charset=utf-8', response1['headers']['Content-Type'], 'Unexpected Content-Type')
+        self.assertEqual('{"id":4,"token":"QpwL5tke4Pnpja7X4"}', response1['body'], 'unexpected body response')
+
+    def test_should_support_post_request_with_plain_body(self):
+
+        #   when
+        response1 = ApiProxy().process_event(self.__post_request_plain_body_event())
         print(response1['body'])
         #   then
         self.assertEqual("200", response1['statusCode'], 'incorrect response code')
